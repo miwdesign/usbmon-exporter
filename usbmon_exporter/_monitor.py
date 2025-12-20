@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import contextlib
 
 from . import _sysfs as sysfs
@@ -9,6 +10,7 @@ class UsbMonitor:
         self._usbmon = usbmon
         self._uevent = uevent
         self._usb_id_map = {}
+        self._pending_packets = collections.defaultdict(list)
 
     def __enter__(self):
         with contextlib.ExitStack() as stack:
@@ -67,6 +69,10 @@ class UsbMonitor:
             if action == "add":
                 self._usb_id_map[key] = usb_id
                 to_remove.discard(key)
+
+                pending = self._pending_packets.pop(key, [])
+                for packet in pending:
+                    print(f"USB ID: {usb_id}, Packet: {packet} (pending)")
             else:
                 to_remove.add(key)
 
@@ -81,7 +87,8 @@ class UsbMonitor:
             if usb_id is not None:
                 print(f"USB ID: {usb_id}, Packet: {packet}")
             else:
-                print("Warning: USB ID not found for packet:", packet)
+                # initial traffic occurs before uevent is received, queue it
+                self._pending_packets[key].append(packet)
 
         for key in to_remove:
             if key in self._usb_id_map:
