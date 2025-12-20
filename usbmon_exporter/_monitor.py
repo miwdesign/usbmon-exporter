@@ -71,8 +71,13 @@ class UsbMonitor:
                 to_remove.add(key)
 
         for packet in packets:
-            key = (packet.busnum, packet.devnum)
-            usb_id = self._usb_id_map.get(key)
+            if packet.devnum == 0:
+                # enumeration packet, no devnum assigned yet
+                usb_id = f"{packet.busnum}-0"
+            else:
+                key = (packet.busnum, packet.devnum)
+                usb_id = self._usb_id_map.get(key)
+
             if usb_id is not None:
                 print(f"USB ID: {usb_id}, Packet: {packet}")
             else:
