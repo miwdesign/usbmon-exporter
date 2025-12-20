@@ -1,7 +1,6 @@
-import asyncio
 import contextlib
 import ctypes
-import errno
+import dataclasses
 import fcntl
 import mmap
 import os
@@ -73,9 +72,6 @@ class UsbMon:
                 mmap.mmap(self._usbmon_fd, ring_size, prot=mmap.PROT_READ)
             )
 
-            loop = asyncio.get_running_loop()
-            loop.add_reader(self._usbmon_fd, self._handle_usbmon_event)
-
             self._stack = stack.pop_all()
             self._stack.__enter__()
             return self
@@ -83,7 +79,11 @@ class UsbMon:
     def __exit__(self, exc_type, exc_value, traceback):
         self._stack.__exit__(exc_type, exc_value, traceback)
 
-    def _handle_usbmon_event(self):
+    @property
+    def fileno(self):
+        return self._usbmon_fd
+
+    def receive_iter(self):
         offvec = (ctypes.c_uint32 * OFFVEC_SIZE)()
         nflush = 0
 
@@ -103,10 +103,8 @@ class UsbMon:
 
             try:
                 fcntl.ioctl(self._usbmon_fd, MON_IOCX_MFETCH, mfetch)
-            except OSError as e:
-                if e.errno == errno.EAGAIN:
-                    break
-                raise
+            except BlockingIOError:
+                break
 
             nflush = mfetch.nfetch
 
@@ -118,9 +116,27 @@ class UsbMon:
                     continue
 
                 is_in = hdr.epnum & 0x80
-                direction = "IN" if is_in else "OUT"
-                epnum = hdr.epnum & 0x7F
+                direction = "in" if is_in else "out"
 
-                print(
-                    f"ID: 0x{hdr.id:016x}, Type: {hdr.type.decode()}, Xfer Type: {xfer_types.get(hdr.xfer_type, hdr.xfer_type)}, Direction: {direction}, Epnum: {epnum}, Devnum: {hdr.devnum}, Busnum: {hdr.busnum}, Length: {hdr.length}, Flags: 0x{ord(hdr.flag_setup):02x}{ord(hdr.flag_data):02x}, Status: {errno.errorcode.get(-hdr.status, hdr.status)}"
+                xfer_type = xfer_types.get(hdr.xfer_type)
+                if xfer_type is None:
+                    continue
+
+                yield UsbPacket(
+                    xfer_type=xfer_type,
+                    direction=direction,
+                    busnum=hdr.busnum,
+                    devnum=hdr.devnum,
+                    length=hdr.length,
+                    status=hdr.status,
                 )
+
+
+@dataclasses.dataclass
+class UsbPacket:
+    xfer_type: str
+    direction: str
+    busnum: int
+    devnum: int
+    length: int
+    status: int

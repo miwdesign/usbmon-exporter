@@ -3,29 +3,17 @@
 import asyncio
 import contextlib
 
-from . import _uevent as uevent
-from . import _usbmon as usbmon
+from ._monitor import UsbMonitor
+from ._uevent import UEvent
+from ._usbmon import UsbMon
 
 
 async def main():
     with (
-        usbmon.UsbMon("/dev/usbmon0"),
-        uevent.UEvent() as uev,
+        UsbMon("/dev/usbmon0") as usbmon,
+        UEvent() as uevent,
+        UsbMonitor(usbmon, uevent),
     ):
-        loop = asyncio.get_running_loop()
-
-        def uevent_callback():
-            for event in uev.receive_iter():
-                if (
-                    event["ACTION"] in ("add", "remove")
-                    and event.get("DEVTYPE") == "usb_device"
-                ):
-                    print(
-                        f'{event["ACTION"]} Devnum: {event["DEVNUM"]}, Busnum: {event["BUSNUM"]} = {event["DEVPATH"]}'
-                    )
-
-        loop.add_reader(uev.sock.fileno(), uevent_callback)
-
         await asyncio.Event().wait()
 
 

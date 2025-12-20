@@ -32,8 +32,8 @@ class UEvent:
         self._stack.__exit__(exc_type, exc_value, traceback)
 
     @property
-    def sock(self):
-        return self._sock
+    def fileno(self):
+        return self._sock.fileno()
 
     def receive_iter(self):
         while True:
