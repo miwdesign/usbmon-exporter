@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 
+from . import _sysfs as sysfs
+
 
 class UsbMonitor:
     def __init__(self, usbmon, uevent):
@@ -18,6 +20,8 @@ class UsbMonitor:
             loop.add_reader(self._usbmon.fileno, self._on_event)
             stack.callback(loop.remove_reader, self._usbmon.fileno)
 
+            self._build_usb_id_map()
+
             self._stack = stack.pop_all()
             self._stack.__enter__()
             return self
@@ -26,6 +30,21 @@ class UsbMonitor:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._stack.__exit__(exc_type, exc_value, traceback)
+
+    def _build_usb_id_map(self):
+        # initialize the USB ID map from sysfs
+        self._usb_id_map = sysfs.build_usb_id_map()
+
+        # update the map with any events that occurred since we read sysfs
+        for action, key, usb_id in self._usb_events():
+            if action == "add":
+                self._usb_id_map[key] = usb_id
+            elif action == "remove" and key in self._usb_id_map:
+                del self._usb_id_map[key]
+
+        # flush pending packets, because they may not have corresponding events
+        for _ in self._usbmon.receive_iter():
+            pass
 
     def _on_event(self):
         packets = []
