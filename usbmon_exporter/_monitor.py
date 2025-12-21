@@ -2,6 +2,7 @@ import asyncio
 import collections
 import contextlib
 
+from . import _metrics as metrics
 from . import _sysfs as sysfs
 
 
@@ -9,7 +10,7 @@ class UsbMonitor:
     def __init__(self, usbmon, uevent):
         self._usbmon = usbmon
         self._uevent = uevent
-        self._usb_id_map = {}
+        self._usb_id_map = collections.defaultdict(dict)
         self._pending_packets = collections.defaultdict(list)
 
     def __enter__(self):
@@ -23,6 +24,8 @@ class UsbMonitor:
             stack.callback(loop.remove_reader, self._usbmon.fileno)
 
             self._build_usb_id_map()
+
+            self._init_metrics()
 
             self._stack = stack.pop_all()
             self._stack.__enter__()
@@ -38,17 +41,39 @@ class UsbMonitor:
         self._usb_id_map = sysfs.build_usb_id_map()
 
         # update the map with any events that occurred since we read sysfs
-        for action, key, usb_id in self._usb_events():
+        for action, busnum, devnum, usb_id in self._usb_events():
             if action == "add":
-                self._usb_id_map[key] = usb_id
-            elif action == "remove" and key in self._usb_id_map:
-                del self._usb_id_map[key]
+                self._usb_id_map[busnum][devnum] = usb_id
+            elif action == "remove" and devnum in self._usb_id_map[busnum]:
+                del self._usb_id_map[busnum][devnum]
 
         # flush pending packets, because they may not have corresponding events
         for _ in self._usbmon.receive_iter():
             pass
 
+    def _init_metrics(self):
+        for busnum, dev_map in self._usb_id_map.items():
+            for _, usb_id in dev_map.items():
+                metrics.URBS_BY_USB_ID.labels(usb_id)
+
+            for xfer_type in metrics.XFER_TYPES.values():
+                for direction in metrics.DIRECTIONS:
+                    metrics.URBS_BY_BUS.labels(busnum, xfer_type, direction)
+
+                metrics.URB_ERRORS.labels(busnum, xfer_type)
+                metrics.URB_SIZE_BYTES.labels(busnum, xfer_type)
+
+            metrics.DEVICES.labels(busnum).set_function(
+                lambda b=busnum: len(self._usb_id_map[b])
+            )
+
     def _on_event(self):
+        packets, events = self._drain_sources()
+        to_remove = self._process_events(events)
+        self._process_packets(packets)
+        self._cleanup_removed_devices(to_remove)
+
+    def _drain_sources(self):
         packets = []
         events = []
 
@@ -62,37 +87,43 @@ class UsbMonitor:
             # make sure both sources are drained, so we can correlate events
             # properly
             if not new_packets and not new_events:
-                break
+                return packets, events
 
+    def _process_events(self, events):
         to_remove = set()
-        for action, key, usb_id in events:
+        for action, busnum, devnum, usb_id in events:
+            key = (busnum, devnum)
             if action == "add":
-                self._usb_id_map[key] = usb_id
+                self._usb_id_map[busnum][devnum] = usb_id
                 to_remove.discard(key)
 
                 pending = self._pending_packets.pop(key, [])
                 for packet in pending:
-                    print(f"USB ID: {usb_id}, Packet: {packet} (pending)")
+                    self._observe_packet(packet, usb_id)
             else:
                 to_remove.add(key)
 
+        return to_remove
+
+    def _process_packets(self, packets):
         for packet in packets:
             if packet.devnum == 0:
                 # enumeration packet, no devnum assigned yet
                 usb_id = f"{packet.busnum}-0"
             else:
-                key = (packet.busnum, packet.devnum)
-                usb_id = self._usb_id_map.get(key)
+                usb_id = self._usb_id_map[packet.busnum].get(packet.devnum)
 
             if usb_id is not None:
-                print(f"USB ID: {usb_id}, Packet: {packet}")
+                self._observe_packet(packet, usb_id)
             else:
                 # initial traffic occurs before uevent is received, queue it
+                key = (packet.busnum, packet.devnum)
                 self._pending_packets[key].append(packet)
 
-        for key in to_remove:
-            if key in self._usb_id_map:
-                del self._usb_id_map[key]
+    def _cleanup_removed_devices(self, to_remove):
+        for busnum, devnum in to_remove:
+            if devnum in self._usb_id_map[busnum]:
+                del self._usb_id_map[busnum][devnum]
 
     def _usb_events(self):
         for event in self._uevent.receive_iter():
@@ -102,5 +133,27 @@ class UsbMonitor:
                 and event["ACTION"] in ("add", "remove")
             ):
                 usb_id = event["DEVPATH"].rsplit("/", 1)[-1]
-                key = (int(event["BUSNUM"]), int(event["DEVNUM"]))
-                yield event["ACTION"], key, usb_id
+                yield (
+                    event["ACTION"],
+                    int(event["BUSNUM"]),
+                    int(event["DEVNUM"]),
+                    usb_id,
+                )
+
+    def _observe_packet(self, packet, usb_id):
+        if packet.status == 0:
+            metrics.URBS_BY_USB_ID.labels(usb_id).inc()
+            metrics.URBS_BY_BUS.labels(
+                packet.busnum,
+                packet.xfer_type,
+                packet.direction,
+            ).inc()
+            metrics.URB_SIZE_BYTES.labels(
+                packet.busnum,
+                packet.xfer_type,
+            ).observe(packet.length)
+        else:
+            metrics.URB_ERRORS.labels(
+                packet.busnum,
+                packet.xfer_type,
+            ).inc()

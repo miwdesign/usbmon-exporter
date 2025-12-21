@@ -20,3 +20,7 @@ async def main():
 if __name__ == "__main__":
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(main())
+
+    import prometheus_client as promptheus
+
+    promptheus.write_to_textfile("usbmon.prom", promptheus.REGISTRY)

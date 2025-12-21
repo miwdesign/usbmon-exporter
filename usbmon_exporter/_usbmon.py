@@ -5,6 +5,8 @@ import fcntl
 import mmap
 import os
 
+from . import _metrics as metrics
+
 MON_IOCQ_RING_SIZE = 0x00009205
 MON_IOCX_MFETCH = 0xC0109207
 OFFVEC_SIZE = 32
@@ -87,13 +89,6 @@ class UsbMon:
         offvec = (ctypes.c_uint32 * OFFVEC_SIZE)()
         nflush = 0
 
-        xfer_types = {
-            0: "Isochronous",
-            1: "Interrupt",
-            2: "Control",
-            3: "Bulk",
-        }
-
         while True:
             mfetch = MFetchArg(
                 offvec=ctypes.cast(offvec, ctypes.POINTER(ctypes.c_uint32)),
@@ -118,7 +113,7 @@ class UsbMon:
                 is_in = hdr.epnum & 0x80
                 direction = "in" if is_in else "out"
 
-                xfer_type = xfer_types.get(hdr.xfer_type)
+                xfer_type = metrics.XFER_TYPES.get(hdr.xfer_type)
                 if xfer_type is None:
                     continue
 
