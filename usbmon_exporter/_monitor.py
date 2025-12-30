@@ -2,6 +2,9 @@ import asyncio
 import collections
 import contextlib
 
+from prometheus_client import core as prometheus_core
+from prometheus_client import registry as prometheus_registry
+
 from . import _metrics as metrics
 from . import _sysfs as sysfs
 
@@ -66,6 +69,8 @@ class UsbMonitor:
             metrics.DEVICES.labels(busnum).set_function(
                 lambda b=busnum: len(self._usb_id_map[b])
             )
+
+        prometheus_core.REGISTRY.register(_Collector(self._usbmon))
 
     def _on_event(self):
         packets, events = self._drain_sources()
@@ -157,3 +162,21 @@ class UsbMonitor:
                 packet.busnum,
                 packet.xfer_type,
             ).inc()
+
+
+class _Collector(prometheus_registry.Collector):
+    def __init__(self, usbmon):
+        self._usbmon = usbmon
+
+    def collect(self):
+        stats = self._usbmon.get_stats()
+        yield prometheus_core.GaugeMetricFamily(
+            "usbmon_stats_queued",
+            "Number of USB URBs currently queued in the usbmon buffer",
+            value=stats["queued"],
+        )
+        yield prometheus_core.CounterMetricFamily(
+            "usbmon_stats_dropped_total",
+            "Total number of USB URBs dropped due to usbmon buffer overflow",
+            value=stats["dropped"],
+        )

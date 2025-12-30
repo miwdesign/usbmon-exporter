@@ -9,6 +9,7 @@ from . import _metrics as metrics
 
 MON_IOCQ_RING_SIZE = 0x00009205
 MON_IOCX_MFETCH = 0xC0109207
+MON_IOCG_STATS = 0x80089203
 OFFVEC_SIZE = 32
 
 
@@ -58,9 +59,17 @@ class UsbmonPacket(ctypes.Structure):
     )
 
 
+class UsbmonStats(ctypes.Structure):
+    _fields_ = (
+        ("queued", ctypes.c_uint32),
+        ("dropped", ctypes.c_uint32),
+    )
+
+
 class UsbMon:
     def __init__(self, usbmon_path):
         self._usbmon_path = usbmon_path
+        self._dropped_total = 0
 
     def __enter__(self):
         with contextlib.ExitStack() as stack:
@@ -125,6 +134,12 @@ class UsbMon:
                     length=hdr.length,
                     status=hdr.status,
                 )
+
+    def get_stats(self):
+        stats = UsbmonStats()
+        fcntl.ioctl(self._usbmon_fd, MON_IOCG_STATS, stats)
+        self._dropped_total += stats.dropped
+        return {"queued": stats.queued, "dropped": self._dropped_total}
 
 
 @dataclasses.dataclass
