@@ -8,7 +8,7 @@ from . import _metrics as metrics
 from . import _sysfs as sysfs
 
 
-class UsbMonitor:
+class Exporter:
     def __init__(self, usbmon, uevent):
         self._usbmon = usbmon
         self._uevent = uevent
