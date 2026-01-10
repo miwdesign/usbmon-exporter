@@ -1,6 +1,5 @@
-import asyncio
 import collections
-import contextlib
+import select
 
 from prometheus_client import core as prometheus_core
 from prometheus_client import registry as prometheus_registry
@@ -17,27 +16,17 @@ class UsbMonitor:
         self._pending_packets = collections.defaultdict(list)
 
     def __enter__(self):
-        with contextlib.ExitStack() as stack:
-            loop = asyncio.get_running_loop()
+        self._poll = select.poll()
+        self._poll.register(self._usbmon.fileno, select.POLLIN)
+        self._poll.register(self._uevent.fileno, select.POLLIN)
 
-            loop.add_reader(self._uevent.fileno, self._on_event)
-            stack.callback(loop.remove_reader, self._uevent.fileno)
-
-            loop.add_reader(self._usbmon.fileno, self._on_event)
-            stack.callback(loop.remove_reader, self._usbmon.fileno)
-
-            self._build_usb_id_map()
-
-            self._init_metrics()
-
-            self._stack = stack.pop_all()
-            self._stack.__enter__()
-            return self
+        self._build_usb_id_map()
+        self._init_metrics()
 
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._stack.__exit__(exc_type, exc_value, traceback)
+        pass
 
     def _build_usb_id_map(self):
         # initialize the USB ID map from sysfs
@@ -71,6 +60,11 @@ class UsbMonitor:
             )
 
         prometheus_core.REGISTRY.register(_Collector(self._usbmon))
+
+    def run_forever(self):
+        while True:
+            self._poll.poll()
+            self._on_event()
 
     def _on_event(self):
         packets, events = self._drain_sources()
