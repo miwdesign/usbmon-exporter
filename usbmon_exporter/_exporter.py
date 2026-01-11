@@ -53,6 +53,7 @@ class Exporter:
                     metrics.URBS_BY_BUS.labels(busnum, xfer_type, direction)
 
                 metrics.URB_ERRORS.labels(busnum, xfer_type)
+                metrics.URB_SUBMIT_ERRORS.labels(busnum, xfer_type)
                 metrics.URB_SIZE_BYTES.labels(busnum, xfer_type)
 
             metrics.DEVICES.labels(busnum).set_function(
@@ -140,7 +141,12 @@ class Exporter:
                 )
 
     def _observe_packet(self, packet, usb_id):
-        if packet.status == 0:
+        if packet.is_submit_error:
+            metrics.URB_SUBMIT_ERRORS.labels(
+                packet.busnum,
+                packet.xfer_type,
+            ).inc()
+        elif packet.status == 0:
             metrics.URBS_BY_USB_ID.labels(usb_id).inc()
             metrics.URBS_BY_BUS.labels(
                 packet.busnum,

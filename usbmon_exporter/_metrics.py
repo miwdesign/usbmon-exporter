@@ -25,6 +25,11 @@ URB_ERRORS = prometheus.Counter(
     "Total number of USB URB errors",
     ["busnum", "xfer_type"],
 )
+URB_SUBMIT_ERRORS = prometheus.Counter(
+    "usbmon_urb_submit_errors_total",
+    "Total number of USB URB submission errors",
+    ["busnum", "xfer_type"],
+)
 DEVICES = prometheus.Gauge(
     "usbmon_devices",
     "Current number of USB devices",

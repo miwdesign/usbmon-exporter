@@ -115,9 +115,11 @@ class UsbMon:
             for i in range(nflush):
                 hdr = UsbmonPacket.from_buffer_copy(self._ring_buffer, offvec[i])
 
-                if hdr.type != b"C":
-                    # only process callback events
+                if hdr.type not in (b"C", b"E"):
+                    # only process callback and error events
                     continue
+
+                is_submit_error = hdr.type == b"E"
 
                 is_in = hdr.epnum & 0x80
                 direction = "in" if is_in else "out"
@@ -127,6 +129,7 @@ class UsbMon:
                     continue
 
                 yield UsbPacket(
+                    is_submit_error=is_submit_error,
                     xfer_type=xfer_type,
                     direction=direction,
                     busnum=hdr.busnum,
@@ -144,6 +147,7 @@ class UsbMon:
 
 @dataclasses.dataclass
 class UsbPacket:
+    is_submit_error: bool
     xfer_type: str
     direction: str
     busnum: int
