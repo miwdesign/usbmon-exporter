@@ -60,6 +60,12 @@ class Exporter:
                 lambda b=busnum: len(self._usb_id_map[b])
             )
 
+            metrics.PENDING.set_function(
+                lambda: sum(
+                    len(packets) for _, packets in self._pending_packets.items()
+                )
+            )
+
         prometheus_core.REGISTRY.register(_Collector(self._usbmon))
 
     def run_forever(self):

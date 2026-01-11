@@ -35,6 +35,10 @@ DEVICES = prometheus.Gauge(
     "Current number of USB devices",
     ["busnum"],
 )
+PENDING = prometheus.Gauge(
+    "usbmon_pending_usb_id_assignment",
+    "Current number of USB URBs pending USB ID assignment",
+)
 URB_SIZE_BYTES = prometheus.Histogram(
     "usbmon_urb_size_bytes",
     "Size of USB URBs in bytes",
