@@ -146,7 +146,7 @@ class Exporter:
                 packet.busnum,
                 packet.xfer_type,
             ).inc()
-        elif packet.status == 0:
+        elif packet.status == 0 and packet.iso_error_count == 0:
             metrics.URBS_BY_USB_ID.labels(usb_id).inc()
             metrics.URBS_BY_BUS.labels(
                 packet.busnum,

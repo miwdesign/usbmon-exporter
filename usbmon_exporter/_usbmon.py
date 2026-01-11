@@ -128,6 +128,8 @@ class UsbMon:
                 if xfer_type is None:
                     continue
 
+                iso_error_count = hdr.s.iso.error_count if xfer_type == 0 else 0
+
                 yield UsbPacket(
                     is_submit_error=is_submit_error,
                     xfer_type=xfer_type,
@@ -136,6 +138,7 @@ class UsbMon:
                     devnum=hdr.devnum,
                     length=hdr.length,
                     status=hdr.status,
+                    iso_error_count=iso_error_count,
                 )
 
     def get_stats(self):
@@ -154,3 +157,4 @@ class UsbPacket:
     devnum: int
     length: int
     status: int
+    iso_error_count: int
