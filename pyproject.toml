@@ -1,0 +1,40 @@
+[project]
+name = "usbmon-exporter"
+description = "Prometheus exporter for usbmon"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE.txt"]
+authors = [
+    {name = "Simon Holesch", email = "simon@holesch.de"},
+]
+version = "0.1.0"
+keywords = ["prometheus", "grafana", "usbmon"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB)",
+    "Topic :: System :: Monitoring",
+]
+dependencies = [
+    "prometheus-client",
+]
+
+[project.urls]
+Issues = "https://github.com/holesch/usbmon-exporter/issues"
+Source = "https://github.com/holesch/usbmon-exporter"
+
+[project.scripts]
+usbmon_exporter = "usbmon_exporter:main"
+
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
