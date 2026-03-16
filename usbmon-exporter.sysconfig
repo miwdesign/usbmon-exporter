@@ -1,0 +1,7 @@
+# Arguments for usbmon_exporter
+# -l, --listen-address: Address to listen on (default 0.0.0.0:10040)
+# -d, --device: Path to the usbmon device (default /dev/usbmon0)
+USBMON_EXPORTER_ARGS=""
+
+# Include vendored dependencies
+PYTHONPATH=/usr/share/usbmon-exporter/vendor

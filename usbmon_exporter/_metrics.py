@@ -45,3 +45,16 @@ URB_SIZE_BYTES = prometheus.Histogram(
     ["busnum", "xfer_type"],
     buckets=[2**x for x in range(3, 17)],  # 8 to 65536
 )
+URB_LATENCY_SECONDS = prometheus.Histogram(
+    "usbmon_urb_latency_seconds",
+    "URB latency in seconds",
+    ["busnum", "xfer_type"],
+    buckets=[
+        0.0001,
+        0.001,
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+    ],
+)

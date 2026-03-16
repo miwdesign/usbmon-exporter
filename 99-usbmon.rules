@@ -1,0 +1,2 @@
+# Allow usbmon-exporter service to access usbmon devices via miw group
+KERNEL=="usbmon*", GROUP="miw", MODE="0660"

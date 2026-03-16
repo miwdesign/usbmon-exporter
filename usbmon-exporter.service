@@ -1,0 +1,15 @@
+[Unit]
+Description=Prometheus exporter for usbmon
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/sysconfig/usbmon-exporter
+ExecStart=/usr/bin/usbmon_exporter $USBMON_EXPORTER_ARGS
+Restart=always
+User=usbmon
+Group=miw
+AmbientCapabilities=CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target

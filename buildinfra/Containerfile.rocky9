@@ -1,0 +1,35 @@
+FROM rockylinux:9
+
+# hadolint ignore=DL3041
+RUN dnf install --assumeyes dnf-plugins-core && \
+    dnf config-manager --set-enabled crb && \
+    dnf install --assumeyes \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        rpm-build \
+        rpmlint \
+        python3-setuptools && \
+    dnf clean all
+
+RUN mkdir --parents \
+    /build/dist \
+    /build/SOURCES \
+    /build/SPECS \
+    /build/RPMS \
+    /build/SRPMS \
+    /build/BUILD
+
+COPY usbmon-exporter.conf \
+    usbmon-exporter.service \
+    usbmon-exporter.sysconfig \
+    99-usbmon.rules \
+    /build/SOURCES/
+
+COPY usbmon-exporter.spec /build/
+
+COPY ./buildinfra/rpmbuild-wrapper.sh /bin/build
+
+WORKDIR /build
+
+ENTRYPOINT [ "/bin/build" ]
