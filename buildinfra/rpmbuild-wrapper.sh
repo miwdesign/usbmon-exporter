@@ -11,6 +11,8 @@ VERSION="0.2.0"
 
 test -d ${RPMROOT}/SOURCES || mkdir -p ${RPMROOT}/SOURCES
 
+# FIXME: The long list of manual exclusions is clunky; there must be a better
+#        way to manage this.
 tar -czf "${RPMROOT}/SOURCES/${NAME}-${VERSION}.tar.gz" \
     --exclude="${NAME}.spec" \
     --exclude="SOURCES" \
@@ -34,7 +36,6 @@ rpmbuild \
     "${NAME}.spec"
 
 if command -v rpmlint >/dev/null 2>&1; then
-    # Find RPM files to check
     rpm_files=()
     while IFS= read -r -d '' file; do
         rpm_files+=("$file")
@@ -42,10 +43,7 @@ if command -v rpmlint >/dev/null 2>&1; then
 
     if [[ ${#rpm_files[@]} -gt 0 ]]; then
         echo "Running rpmlint on RPMs..."
-        # rpmlint 1.x (Rocky 8) doesn't support --strict or config files well
-        # rpmlint 2.x+ (Rocky 9) supports --strict but we don't use it for vendored packages
-        # The warnings for vendored packages are expected and safe to ignore
-        rpmlint "${rpm_files[@]}" || true
+        rpmlint "${rpm_files[@]}"
     fi
 fi
 
