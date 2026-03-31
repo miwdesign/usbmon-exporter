@@ -43,7 +43,12 @@ if command -v rpmlint >/dev/null 2>&1; then
 
     if [[ ${#rpm_files[@]} -gt 0 ]]; then
         echo "Running rpmlint on RPMs..."
-        rpmlint "${rpm_files[@]}"
+        RPMLINTRC="/src/${NAME}.rpmlintrc"
+        if [[ -f "$RPMLINTRC" ]]; then
+            rpmlint -f "$RPMLINTRC" "${rpm_files[@]}"
+        else
+            rpmlint "${rpm_files[@]}"
+        fi
     fi
 fi
 

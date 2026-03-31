@@ -5,11 +5,13 @@ RUN dnf install --assumeyes dnf-plugins-core && \
     dnf config-manager --set-enabled crb && \
     dnf install --assumeyes \
         pyproject-rpm-macros \
-        python3-devel \
-        python3-pip \
+        python3.12-devel \
+        python3.12-pip \
         rpm-build \
         rpmlint \
-        python3-setuptools && \
+        systemd-rpm-macros \
+        python3.12-setuptools \
+        python3.12-wheel && \
     dnf clean all
 
 RUN mkdir --parents \
@@ -24,6 +26,7 @@ COPY usbmon-exporter.conf \
     usbmon-exporter.service \
     usbmon-exporter.sysconfig \
     99-usbmon.rules \
+    usbmon-exporter-sysusers.conf \
     /build/SOURCES/
 
 COPY usbmon-exporter.spec /build/

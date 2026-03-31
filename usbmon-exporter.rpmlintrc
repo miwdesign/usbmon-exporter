@@ -1,0 +1,7 @@
+# TODO: figure out the root cause of the bytecode craziness that led to
+#       the need for these filters.
+addFilter("python-bytecode-inconsistent-mtime")
+addFilter("python-bytecode-without-source")
+
+# Probably don't need a man page for this
+addFilter("no-manual-page-for-binary")
