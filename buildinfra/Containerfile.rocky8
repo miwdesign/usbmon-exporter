@@ -1,0 +1,27 @@
+FROM rockylinux:8
+
+# hadolint ignore=DL3041
+RUN dnf install --assumeyes epel-release dnf-plugins-core && \
+    dnf config-manager --set-enabled powertools && \
+    dnf install --assumeyes \
+        pyproject-rpm-macros \
+        python3-devel \
+        python3-pip \
+        rpm-build \
+        rpmlint \
+        python3.12-setuptools-68.* \
+        python3.12-wheel && \
+    dnf clean all
+
+RUN mkdir --parents \
+    /build/dist \
+    /build/SOURCES \
+    /build/SPECS \
+    /build/RPMS \
+    /build/BUILD
+
+COPY ./buildinfra/rpmbuild-wrapper.sh /bin/build
+
+WORKDIR /build
+
+ENTRYPOINT [ "/bin/build" ]

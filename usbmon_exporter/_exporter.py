@@ -14,6 +14,7 @@ class Exporter:
         self._uevent = uevent
         self._usb_id_map = collections.defaultdict(dict)
         self._pending_packets = collections.defaultdict(list)
+        self._submission_times = {}
 
     def __enter__(self):
         self._poll = select.poll()
@@ -55,6 +56,7 @@ class Exporter:
                 metrics.URB_ERRORS.labels(busnum, xfer_type)
                 metrics.URB_SUBMIT_ERRORS.labels(busnum, xfer_type)
                 metrics.URB_SIZE_BYTES.labels(busnum, xfer_type)
+                metrics.URB_LATENCY_SECONDS.labels(busnum, xfer_type)
 
             metrics.DEVICES.labels(busnum).set_function(
                 lambda b=busnum: len(self._usb_id_map[b])
@@ -147,6 +149,18 @@ class Exporter:
                 )
 
     def _observe_packet(self, packet, usb_id):
+        if packet.type == "S":
+            self._submission_times[packet.id] = packet.timestamp
+            return
+
+        submission_time = self._submission_times.pop(packet.id, None)
+        if submission_time is not None:
+            latency = packet.timestamp - submission_time
+            metrics.URB_LATENCY_SECONDS.labels(
+                packet.busnum,
+                packet.xfer_type,
+            ).observe(latency)
+
         if packet.is_submit_error:
             metrics.URB_SUBMIT_ERRORS.labels(
                 packet.busnum,

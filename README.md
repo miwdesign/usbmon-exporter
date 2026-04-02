@@ -3,27 +3,17 @@
 `usbmon_exporter` is a Prometheus exporter, that captures USB device metrics
 using the Linux Kernel usbmon interface.
 
+Forked from [holesch/usbmon-exporter](https://github.com/holesch/usbmon-exporter).
+
 ## Installation
 
-Install using `pipx`:
+Install using `dnf`:
 
 ```console
-$ sudo PIPX_HOME=/opt/pipx PIPX_BIN_DIR=/usr/local/bin pipx install usbmon-exporter
+$ sudo dnf install usbmon-exporter
 ```
 
 ## Usage
-
-Make sure the `usbmon` Kernel module is loaded:
-
-```console
-$ sudo modprobe usbmon
-```
-
-Run `usbmon_exporter` as root:
-
-```console
-$ sudo usbmon_exporter
-```
 
 Metrics should now be readable at http://localhost:10040/metrics.
 
@@ -74,6 +64,10 @@ Current number of URBs pending USB ID assignment. This metric is mostly for
 debugging `usbmon_exporter`. Counts the number of URBs, that are recorded during
 enumeration, that cannot be assigned to a USB ID, before the Kernel emits a
 uevent for the new device. The value should be `0` most of the time.
+
+### Histogram `usbmon_urb_latency_seconds`
+
+URB latency in seconds.
 
 ## Labels
 

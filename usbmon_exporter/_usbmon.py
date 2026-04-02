@@ -115,8 +115,8 @@ class UsbMon:
             for i in range(nflush):
                 hdr = UsbmonPacket.from_buffer_copy(self._ring_buffer, offvec[i])
 
-                if hdr.type not in (b"C", b"E"):
-                    # only process callback and error events
+                if hdr.type not in (b"S", b"C", b"E"):
+                    # only process submission, callback and error events
                     continue
 
                 is_submit_error = hdr.type == b"E"
@@ -131,6 +131,9 @@ class UsbMon:
                 iso_error_count = hdr.s.iso.error_count if xfer_type == 0 else 0
 
                 yield UsbPacket(
+                    id=hdr.id,
+                    type=hdr.type.decode(),
+                    timestamp=hdr.ts_sec + hdr.ts_usec / 1_000_000,
                     is_submit_error=is_submit_error,
                     xfer_type=xfer_type,
                     direction=direction,
@@ -150,6 +153,9 @@ class UsbMon:
 
 @dataclasses.dataclass
 class UsbPacket:
+    id: int
+    type: str
+    timestamp: float
     is_submit_error: bool
     xfer_type: str
     direction: str
