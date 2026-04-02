@@ -7,33 +7,12 @@ set -u
 
 NAME="usbmon-exporter"
 RPMROOT="/build"
-VERSION="0.2.0"
-
-test -d ${RPMROOT}/SOURCES || mkdir -p ${RPMROOT}/SOURCES
-
-# FIXME: The long list of manual exclusions is clunky; there must be a better
-#        way to manage this.
-tar -czf "${RPMROOT}/SOURCES/${NAME}-${VERSION}.tar.gz" \
-    --exclude="${NAME}.spec" \
-    --exclude="SOURCES" \
-    --exclude="SPECS" \
-    --exclude="RPMS" \
-    --exclude="SRPMS" \
-    --exclude="BUILD" \
-    --exclude=".git" \
-    --exclude=".mypy_cache" \
-    --exclude="dist" \
-    --exclude="todo" \
-    --exclude="BUILD" \
-    --exclude="BUILDROOT" \
-    --transform "s!^\./!${NAME}-${VERSION}/!" \
-    -C /src .
 
 rpmbuild \
-    --ba \
+    --bb \
     --define "_topdir ${RPMROOT}" \
-    --define "_sourcedir ${RPMROOT}/SOURCES" \
-    "${NAME}.spec"
+    --define "_sourcedir /src" \
+    "/src/${NAME}.spec"
 
 if command -v rpmlint >/dev/null 2>&1; then
     rpm_files=()

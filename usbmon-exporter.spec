@@ -9,7 +9,6 @@ Summary:        Prometheus exporter for usbmon
 
 License:        MIT
 URL:            https://github.com/miwdesign/usbmon-exporter
-Source0:        %{name}-%{version}.tar.gz
 Source1:        %{name}.service
 Source2:        %{name}.conf
 Source3:        %{name}.sysconfig
@@ -36,7 +35,8 @@ usbmon-exporter is a Prometheus exporter that captures USB device metrics
 using the Linux Kernel usbmon interface.
 
 %prep
-%autosetup
+%setup -q -c -T
+cp -ar /src/. .
 
 %build
 %pyproject_wheel
@@ -61,11 +61,12 @@ install -D -p -m 0644 %{SOURCE5} %{buildroot}%{_sysusersdir}/%{name}.conf
 mkdir -p %{buildroot}/var/lib/usbmon-exporter
 
 %pre
-%sysusers_create %{SOURCE5}
+%sysusers_create_package %{name} %{SOURCE5}
 
 %post
 %systemd_post %{name}.service
 if [ $1 -eq 1 ]; then
+    systemctl daemon-reload
     systemctl start %{name}.service
 fi
 

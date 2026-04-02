@@ -52,6 +52,7 @@ podman run \
     --rm \
     --platform "${TARGET_PLATFORM}" \
     --volume "$PWD":/src:Z \
+    --volume "$THIS_DIR/buildinfra/rpmbuild-wrapper.sh":/bin/build:Z \
     --volume "$THIS_DIR/dist":/build/dist:Z \
     "$BUILDER_IMAGE"
 
